@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Inventory Dashboard</title>
+    <style>
+        :root {
+            --primary-color: #2a3f54;
+            --success-color: #28a745;
+            --info-color: #17a2b8;
+            --danger-color: #dc3545;
+            --warning-color: #f39c12;
+            --light-bg: #f4f4f4;
+            --border-color: #ddd;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 15px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* 1. COMPACT LAYOUT & FIXED HEADERS */
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid var(--border-color);
+            max-height: 550px;
+            position: relative;
+        }
+
+        #datatable-b {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 11px;
+        }
+
+        /* Single line fixed headers */
+        #datatable-b thead tr.header-row th {
+            position: sticky;
+            top: 0;
+            background-color: var(--primary-color);
+            color: white;
+            z-index: 10;
+            padding: 10px 8px;
+            text-align: left;
+            border: 1px solid #3e4f5f;
+            white-space: nowrap; 
+            vertical-align: middle;
+            height: 35px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #datatable-b thead tr.search-row th {
+            position: sticky;
+            top: 35px;
+            background-color: #f4f4f4;
+            z-index: 9;
+            padding: 3px;
+            border: 1px solid var(--border-color);
+        }
+
+        .col-search {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 2px;
+            font-size: 10px;
+            border: 1px solid #ccc;
+        }
+
+        #datatable-b td {
+            padding: 8px 6px;
+            border: 1px solid #eee;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        tr.data-row:hover { background-color: #f8f9fa; }
+        tr.active-row { background-color: #e3f2fd !important; }
+
+        /* 2. TOGGLE BUTTON */
+        .toggle-btn {
+            width: 18px;
+            height: 18px;
+            background: var(--info-color);
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 3. STRUCTURED EXPANSION */
+        .expand-row { display: none; background-color: #fff; }
+        .expand-row.show { display: table-row !important; }
+
+        .expansion-content {
+            padding: 20px;
+            border-left: 6px solid var(--primary-color);
+            background: #fafafa;
+        }
+
+        .expansion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        /* Grid for "All Information" */
+        .expansion-grid {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .expansion-section { flex: 1; min-width: 280px; }
+        .section-title {
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--primary-color);
+            border-bottom: 1.5px solid var(--primary-color);
+            margin-bottom: 10px;
+            padding-bottom: 3px;
+            text-transform: uppercase;
+        }
+
+        .detail-item { margin-bottom: 10px; }
+        .detail-label { display: block; font-weight: bold; color: #666; font-size: 8px; text-transform: uppercase; }
+        .detail-value { font-size: 12px; color: #333; white-space: normal; }
+
+        .detail-input {
+            width: 100%;
+            padding: 4px 6px;
+            font-size: 11px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            margin-top: 2px;
+            box-sizing: border-box;
+        }
+
+        /* 4. NAVIGATION & UTILITIES */
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 15px;
+            gap: 5px;
+        }
+
+        .page-btn {
+            padding: 5px 10px;
+            border: 1px solid var(--border-color);
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            min-width: 35px;
+        }
+
+        .page-btn.active { background-color: var(--primary-color); color: white; border-color: var(--primary-color); }
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .glow { box-shadow: 0 0 10px rgba(40, 167, 69, 0.3); }
+
+        .alert {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+        }
+        .alert-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="SuccessMessage" class="alert alert-success" style="display:none;">
+        Update successful!
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-bottom:15px;">
+        <input type="text" style="border:none; width:300px; font-size:14px; text-align:right;" readonly value="Any Clarification/Issue Please Open a ticket">
+        <a href="#" target="_blank">
+            <button type="button" class="glow btn btn-success btn-sm">Ticket link</button>
+        </a>
+    </div>
+
+    <div style="display:flex; justify-content:center; color:darkslategray; margin-bottom:15px;">
+        <h3><strong>Report Inventory Hub</strong></h3>
+    </div>
+
+    <div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:10px;">
+            <div class="search-wrapper" style="display:flex; gap:8px;">
+                <input type="text" id="globalSearch" class="global-search" style="padding: 5px 10px; border: 1px solid #ccc; border-radius: 4px;" placeholder="Global Search..." oninput="applyFilters()">
+                <button type="button" class="btn btn-secondary btn-sm" style="background-color: #6c757d; color: white;" onclick="exportToCSV()">Export CSV</button>
+            </div>
+            <div style="display:flex; gap:5px;">
+                <button type="button" class="btn btn-info btn-sm" style="background-color: var(--info-color); color: white;">Summary</button>
+                <button type="button" class="btn btn-primary btn-sm" style="background-color: #007bff; color: white;">Add Record</button>
+                <button type="button" class="btn btn-danger btn-sm" style="background-color: var(--danger-color); color: white;">Delete Selected</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="datatable-b">
+                <thead>
+                    <tr class="header-row">
+                        <th style="width:40px; text-align:center;">+/-</th>
+                        <th style="width:120px;">Unique ID</th>
+                        <th style="width:350px;">Report Name (Identification)</th>
+                        <th style="width:150px;">Manager Assigned</th>
+                        <th style="width:100px;">Criticality</th>
+                        <th style="width:50px; text-align:center;">Sel.</th>
+                    </tr>
+                    <tr class="search-row">
+                        <th></th>
+                        <th><input type="text" class="col-search" placeholder="Filter ID..." oninput="applyFilters()"></th>
+                        <th><input type="text" class="col-search" placeholder="Filter Name..." oninput="applyFilters()"></th>
+                        <th><input type="text" class="col-search" placeholder="Filter Manager..." oninput="applyFilters()"></th>
+                        <th><input type="text" class="col-search" placeholder="Filter Crit..." oninput="applyFilters()"></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Data rows will be injected by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="pagination-container" id="pagination">
+        <button type="button" class="page-btn" id="btnPrev" onclick="navigatePage(-1)">Prev</button>
+        <span id="pageNumbers"></span>
+        <button type="button" class="page-btn" id="btnNext" onclick="navigatePage(1)">Next</button>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    // 1. DUMMY DATA (Replacing @Model)
+    let inventoryData = Array.from({ length: 25 }, (_, i) => ({
+        ID: i + 1,
+        Unique_Report_Name: `REP-UNQ-00${i + 1}`,
+        Report_Name: `Quarterly Review - Region ${String.fromCharCode(65 + i % 6)}`,
+        Manager: i % 2 === 0 ? "John Doe" : "Jane Smith",
+        Criticality: i % 5 === 0 ? "High" : "Medium",
+        Description: "Consolidated performance metrics for the fiscal quarter.",
+        Team: "Reporting COE",
+        Function: "Operations",
+        Process: "Compliance Audit",
+        Frequency: "Monthly",
+        SOP_Link: "#",
+        Report_Link: "#",
+        Comments: "Data source verified.",
+        isEditing: false
+    }));
+
+    let currentPage = 1;
+    const rowsPerPage = 10;
+    let filteredData = [...inventoryData];
+
+    // 2. RENDERING LOGIC
+    function renderTable() {
+        const tbody = $('#tableBody');
+        tbody.empty();
+
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const pageData = filteredData.slice(start, end);
+
+        pageData.forEach(item => {
+            const dataRow = `
+                <tr class="data-row" data-id="${item.ID}">
+                    <td style="text-align:center;">
+                        <button type="button" class="toggle-btn" onclick="toggleExpansion('${item.ID}')">+</button>
+                    </td>
+                    <td class="display-uniqueName">${item.Unique_Report_Name}</td>
+                    <td class="display-reportName" title="${item.Report_Name}">${item.Report_Name}</td>
+                    <td class="display-manager">${item.Manager}</td>
+                    <td class="display-criticality">${item.Criticality}</td>
+                    <td style="text-align:center;" onclick="event.stopPropagation()">
+                        <input type="checkbox" class="select-one" value="${item.ID}" onclick="selectone(this)">
+                    </td>
+                </tr>
+                <tr class="expand-row" id="expand-${item.ID}">
+                    <td colspan="6">
+                        <div class="expansion-content" id="content-${item.ID}">
+                            ${renderDetailView(item)}
+                        </div>
+                    </td>
+                </tr>
+            `;
+            tbody.append(dataRow);
+        });
+
+        updatePaginationUI();
+    }
+
+    function renderDetailView(item) {
+        if (item.isEditing) {
+            return `
+                <div class="expansion-header">
+                    <h4 style="margin:0; font-size:13px;">Edit Data: ${item.Unique_Report_Name}</h4>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="saveUpdate('${item.ID}')">Update Database</button>
+                </div>
+                <div class="expansion-grid">
+                    <div class="expansion-section">
+                        <div class="section-title">Report Details</div>
+                        <div class="detail-item">
+                            <span class="detail-label">Unique ID</span>
+                            <input type="text" class="detail-input" name="Unique_Report_Name" value="${item.Unique_Report_Name}">
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Report Name</span>
+                            <input type="text" class="detail-input" name="Report_Name" value="${item.Report_Name}">
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Description</span>
+                            <input type="text" class="detail-input" name="Description" value="${item.Description}">
+                        </div>
+                    </div>
+                    <div class="expansion-section">
+                        <div class="section-title">Ownership</div>
+                        <div class="detail-item">
+                            <span class="detail-label">Manager</span>
+                            <input type="text" class="detail-input" name="Manager" value="${item.Manager}">
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Team</span>
+                            <input type="text" class="detail-input" name="Team" value="${item.Team}">
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Criticality</span>
+                            <input type="text" class="detail-input" name="Criticality" value="${item.Criticality}">
+                        </div>
+                    </div>
+                    <div class="expansion-section">
+                        <div class="section-title">Technical Info</div>
+                        <div class="detail-item">
+                            <span class="detail-label">Process</span>
+                            <input type="text" class="detail-input" name="Process" value="${item.Process}">
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Frequency</span>
+                            <input type="text" class="detail-input" name="Frequency" value="${item.Frequency}">
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Comments</span>
+                            <input type="text" class="detail-input" name="Comments" value="${item.Comments}">
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="expansion-header">
+                    <h4 style="margin:0; font-size:13px;">Information: ${item.Unique_Report_Name}</h4>
+                    <button type="button" class="btn btn-warning btn-sm" onclick="enterEditMode('${item.ID}')">Edit Information</button>
+                </div>
+                <div class="expansion-grid">
+                    <div class="expansion-section">
+                        <div class="section-title">Report Details</div>
+                        <div class="detail-item"><span class="detail-label">Unique ID</span><span class="detail-value">${item.Unique_Report_Name}</span></div>
+                        <div class="detail-item"><span class="detail-label">Report Name</span><span class="detail-value">${item.Report_Name}</span></div>
+                        <div class="detail-item"><span class="detail-label">Description</span><span class="detail-value">${item.Description}</span></div>
+                    </div>
+                    <div class="expansion-section">
+                        <div class="section-title">Ownership</div>
+                        <div class="detail-item"><span class="detail-label">Manager</span><span class="detail-value">${item.Manager}</span></div>
+                        <div class="detail-item"><span class="detail-label">Team</span><span class="detail-value">${item.Team}</span></div>
+                        <div class="detail-item"><span class="detail-label">Criticality</span><span class="detail-value">${item.Criticality}</span></div>
+                    </div>
+                    <div class="expansion-section">
+                        <div class="section-title">Technical Info</div>
+                        <div class="detail-item"><span class="detail-label">Process</span><span class="detail-value">${item.Process}</span></div>
+                        <div class="detail-item"><span class="detail-label">Frequency</span><span class="detail-value">${item.Frequency}</span></div>
+                        <div class="detail-item"><span class="detail-label">Comments</span><span class="detail-value">${item.Comments}</span></div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // 3. EDIT/UPDATE LOGIC
+    function enterEditMode(id) {
+        const item = inventoryData.find(d => d.ID == id);
+        item.isEditing = true;
+        renderTable();
+        // Re-open expansion
+        toggleExpansion(id, true);
+    }
+
+    function saveUpdate(id) {
+        const item = inventoryData.find(d => d.ID == id);
+        const contentDiv = $(document.getElementById(`content-${id}`));
+        
+        contentDiv.find('input.detail-input').each(function() {
+            const key = $(this).attr('name');
+            item[key] = $(this).val();
+        });
+
+        item.isEditing = false;
+        
+        // Show success
+        $('#SuccessMessage').show().fadeOut(3000);
+        
+        renderTable();
+        toggleExpansion(id, true);
+    }
+
+    // 4. NAVIGATION & FILTERS
+    function toggleExpansion(id, forceOpen = false) {
+        const tr = $(`.data-row[data-id="${id}"]`);
+        const targetElement = document.getElementById(`expand-${id}`);
+        if (!targetElement) return;
+
+        const target = $(targetElement);
+        const btn = tr.find('.toggle-btn');
+        const isShown = target.hasClass('show');
+
+        if (!forceOpen) {
+            $('.expand-row').removeClass('show');
+            $('.data-row').removeClass('active-row');
+            $('.toggle-btn').text('+');
+        }
+
+        if (forceOpen || !isShown) {
+            target.addClass('show');
+            tr.addClass('active-row');
+            btn.text('-');
+        }
+    }
+
+    function applyFilters() {
+        const globalFilter = $('#globalSearch').val().toLowerCase();
+        const colFilters = $('.col-search').map(function() { return $(this).val().toLowerCase(); }).get();
+
+        filteredData = inventoryData.filter(item => {
+            const rowString = `${item.Unique_Report_Name} ${item.Report_Name} ${item.Manager} ${item.Criticality}`.toLowerCase();
+            let matches = rowString.indexOf(globalFilter) > -1;
+
+            if (matches) {
+                if (colFilters[0] && item.Unique_Report_Name.toLowerCase().indexOf(colFilters[0]) === -1) matches = false;
+                if (colFilters[1] && item.Report_Name.toLowerCase().indexOf(colFilters[1]) === -1) matches = false;
+                if (colFilters[2] && item.Manager.toLowerCase().indexOf(colFilters[2]) === -1) matches = false;
+                if (colFilters[3] && item.Criticality.toLowerCase().indexOf(colFilters[3]) === -1) matches = false;
+            }
+
+            return matches;
+        });
+
+        currentPage = 1;
+        renderTable();
+    }
+
+    function updatePaginationUI() {
+        const totalPages = Math.ceil(filteredData.length / rowsPerPage) || 1;
+        $('#btnPrev').prop('disabled', currentPage === 1);
+        $('#btnNext').prop('disabled', currentPage === totalPages);
+
+        let pagesHtml = '';
+        for (let i = 1; i <= totalPages; i++) {
+            pagesHtml += `<button type="button" class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+        }
+        $('#pageNumbers').html(pagesHtml);
+    }
+
+    function goToPage(page) { currentPage = page; renderTable(); }
+    function navigatePage(dir) { currentPage += dir; renderTable(); }
+    function selectone(clicked) { $('.select-one').not(clicked).prop('checked', false); }
+    function exportToCSV() { alert('CSV exported successfully (Simulated)'); }
+
+    $(document).ready(() => {
+        renderTable();
+    });
+</script>
+</body>
+</html>
